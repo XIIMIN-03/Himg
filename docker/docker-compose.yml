@@ -1,0 +1,21 @@
+services:
+  himg:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: himg-himg:latest
+    container_name: himg
+    restart: unless-stopped
+    ports:
+      - "${HIMG_DOCKER_PORT:-6841}:8080"
+    env_file:
+      - ../.env
+    environment:
+      TZ: Asia/Shanghai
+      HIMG_DATA_DIR: /data
+      HIMG_DB_FILE: /data/himg.db
+      HIMG_THEMES_DIR: /themes
+      LOCAL_UPLOAD_DIR: /data/uploads
+    volumes:
+      - ../data:/data
+      - ../themes:/themes

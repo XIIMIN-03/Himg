@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/webp" href="/theme/logo.webp">
+    <link rel="preload" href="/theme/fonts/LXGWWenKaiLite-All-v2.woff2" as="font" type="font/woff2" crossorigin>
+    <title>氢图床 Himg v0.1</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-main: #333333;
+            --text-secondary: #888888;
+            --border-color: #bbbbbb;
+            --hover-bg: #f5f5f5;
+            --menu-item-hover: rgba(0, 0, 0, 0.08);
+            --font-family: "HimgWenKaiLite", "LXGW WenKai Lite", "LXGW WenKai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* 自定义虚线背景 - 浅色模式 (stroke-dasharray控制长短与间隔) */
+            --dash-border: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%23bbbbbb' stroke-width='1.5' stroke-dasharray='15%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        @font-face {
+            font-family: "HimgWenKaiLite";
+            src: url("/theme/fonts/LXGWWenKaiLite-All-v2.woff2") format("woff2");
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-main: #e0e0e0;
+            --text-secondary: #aaaaaa;
+            --border-color: #444444;
+            --hover-bg: #1e1e1e;
+            --menu-item-hover: rgba(255, 255, 255, 0.12);
+            /* 自定义虚线背景 - 深色模式 */
+            --dash-border: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%23444444' stroke-width='1.5' stroke-dasharray='15%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            overscroll-behavior: none;
+            transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body *,
+        body *::before,
+        body *::after {
+            font-family: inherit;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        /* --- 导航 --- */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; z-index: 1001; }
+        @media (min-width: 768px) { header { padding: 20px 40px; } }
+
+        .logo { font-size: 25px; font-weight: 300; display: flex; align-items: baseline; gap: 8px; cursor: pointer; }
+        .logo span {
+            font-size: 14px;
+            font-weight: 300;
+            color: var(--text-secondary);
+        }
+
+        .header-actions { display: flex; gap: 10px; align-items: center; position: relative; }
+
+        .icon-btn {
+            background: none; border: none; cursor: pointer; color: var(--text-main);
+            display: flex; align-items: center; justify-content: center; padding: 8px; border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+        .icon-btn:hover { background-color: var(--menu-item-hover); }
+
+        .icon-btn svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.5; fill: none; transition: transform 0.3s ease, opacity 0.3s ease; }
+
+        /* --- 菜单 --- */
+        .dropdown-menu {
+            position: absolute; top: 100%; right: 0; margin-top: 10px;
+            background-color: var(--hover-bg); border-radius: 12px;
+            padding: 0; min-width: 140px; display: flex; flex-direction: column;
+            opacity: 0; visibility: hidden; transform: translateY(-10px);
+            z-index: 100; overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        .dropdown-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown-menu a { text-decoration: none; color: var(--text-secondary); padding: 12px 20px; font-size: 14px; display: block; transition: all 0.2s ease; }
+        .dropdown-menu a:first-child { padding-top: 18px; }
+        .dropdown-menu a:last-child { padding-bottom: 18px; }
+        .dropdown-menu a:hover { background-color: var(--menu-item-hover); color: var(--text-main); padding-left: 24px; }
+
+        /* --- 左滑关闭的公告 --- */
+        .notice-container { padding: 0 20px; margin-top: 5px; display: flex; overflow: hidden; max-height: 100px; flex-shrink: 0; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .notice-container.hidden { opacity: 0; max-height: 0; margin-top: 0; padding-top: 0; padding-bottom: 0; transform: translateX(-100%); pointer-events: none; }
+        @media (min-width: 768px) { .notice-container { padding: 0 40px; } }
+
+        .notice-pill { display: flex; align-items: center; background-color: var(--hover-bg); padding: 6px 14px; border-radius: 50px; width: fit-content; max-width: 100%; min-width: 0; }
+        .notice-icon { margin-right: 8px; color: var(--text-secondary); display: flex; align-items: center; }
+        .notice-icon svg { width: 14px; height: 14px; }
+        .notice-content { font-size: 13px; color: var(--text-secondary); margin-right: 12px; min-width: 0; overflow-wrap: anywhere; }
+        .notice-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 50%; }
+        .notice-close:hover { background-color: var(--menu-item-hover); color: var(--text-main); }
+        .notice-close svg { width: 14px; height: 14px; stroke-width: 2.5; stroke: currentColor; }
+
+        /* --- 视图动画核心容器 --- */
+        .views-wrapper {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* 统一视图样式 */
+        .view-section {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            padding: 12px 20px 16px;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (min-width: 768px) { .view-section { padding: 20px; } }
+
+        /* 隐藏状态：下移且透明 */
+        .view-section.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+        }
+
+        /* --- 虚线加长的上传区域 --- */
+        .upload-panel {
+            width: 100%;
+            max-width: 800px;
+            min-width: 0;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .upload-area {
+            --upload-offset: 0px;
+            width: 100%; height: 300px;
+            border: none;
+            background-image: var(--dash-border);
+            background-repeat: no-repeat;
+            background-size: 100% 100%;
+            border-radius: 24px;
+            position: relative;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; gap: 15px;
+            transform: translateY(var(--upload-offset));
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease;
+        }
+        @media (min-width: 768px) { .upload-area { height: 400px; } }
+        .upload-panel.has-result .upload-area { --upload-offset: -18px; }
+        @media (min-width: 768px) { .upload-panel.has-result .upload-area { --upload-offset: -24px; } }
+        .upload-area:hover { 
+            transform: translateY(calc(var(--upload-offset) - 2px)); 
+            filter: brightness(0.98); 
+        }
+        .upload-area.is-uploading {
+            opacity: 0.72;
+            cursor: wait;
+        }
+
+        .upload-area svg { width: 54px; height: 54px; stroke: var(--text-main); stroke-width: 1; }
+        .upload-area p { font-size: 18px; font-weight: 300; color: var(--text-main); }
+
+        .upload-tip {
+            position: absolute;
+            left: 50%;
+            bottom: 28px;
+            width: calc(100% - 48px);
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            min-height: 20px;
+            padding: 0 12px;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .upload-progress {
+            position: absolute;
+            left: 50%;
+            bottom: 14px;
+            width: min(240px, calc(100% - 48px));
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            opacity: 0;
+            transform: translate(-50%, 6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+
+        .upload-progress.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--text-main);
+            transition: width 0.18s ease;
+        }
+
+        .upload-result {
+            width: 100%; min-width: 0; margin-top: 2px; display: grid; gap: 10px; padding: 0 4px;
+            opacity: 0; transform: translateY(14px);
+            transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .upload-result.result-hidden { display: none; }
+        .upload-panel.has-result .upload-result { opacity: 1; transform: translateY(0); }
+
+        .result-copy {
+            width: 100%; min-width: 0; border: 1px solid var(--border-color); background: transparent; color: var(--text-main);
+            border-radius: 18px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 10px; text-align: left;
+            cursor: pointer; transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .result-copy:hover { background-color: var(--hover-bg); transform: translateY(-1px); }
+        .result-label { flex: 0 0 72px; color: var(--text-secondary); font-size: 12px; letter-spacing: 0.5px; padding-top: 2px; }
+        .result-value { flex: 1; min-width: 0; font-size: 13px; word-break: break-all; line-height: 1.5; }
+
+        /* --- 登录界面 (还原图片) --- */
+        .login-card {
+            --login-offset: -42px;
+            padding: 50px 30px; border-radius: 32px;
+            width: 90%; max-width: 380px;
+            display: flex; flex-direction: column; align-items: center; gap: 25px;
+            transform: translateY(var(--login-offset));
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* 视图隐藏时卡片微缩 */
+        .view-section.hidden .login-card { transform: translateY(var(--login-offset)) scale(0.92); }
+
+        .login-icon { color: var(--text-main); opacity: 0.7; }
+        .login-icon svg { width: 32px; height: 32px; }
+
+        .login-input-box {
+            width: 100%; background: #f5f5f5; border-radius: 16px;
+            display: flex; align-items: center; padding: 6px 16px;
+            box-shadow: none;
+        }
+        .login-input-box input {
+            flex: 1; min-width: 0; border: none; background: transparent; padding: 10px 0;
+            font-size: 15px; color: var(--text-main); outline: none;
+        }
+        .login-input-box input::placeholder { color: var(--text-secondary); opacity: 0.5; font-weight: 300; }
+        
+        .login-submit-btn {
+            width: 32px; height: 32px; margin-left: 10px; padding: 0;
+            flex: 0 0 32px; border: none; background: none; cursor: pointer;
+            color: var(--text-main); opacity: 0.6; appearance: none; -webkit-appearance: none;
+            display: inline-flex; align-items: center; justify-content: center; align-self: center;
+            transition: opacity 0.2s;
+        }
+        .login-submit-btn:hover { opacity: 1; }
+        .login-submit-btn svg {
+            width: 20px; height: 20px; display: block; flex-shrink: 0;
+            transform: translate(-0.5px, 0.5px);
+        }
+
+        body.dark-mode .login-input-box {
+            background: #1f1f1f;
+            box-shadow: none;
+        }
+
+        body.dark-mode .login-input-box input {
+            color: #f3f3f3;
+        }
+
+        body.dark-mode .login-input-box input::placeholder {
+            color: #8f8f8f;
+            opacity: 1;
+        }
+
+        body.dark-mode .login-submit-btn {
+            color: #f3f3f3;
+            opacity: 0.72;
+        }
+
+        /* --- 文档视图 --- */
+        .docs-shell {
+            width: 100%;
+            max-width: 920px;
+            height: 100%;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .docs-head {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 0 4px;
+        }
+
+        .docs-title {
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 0.4px;
+        }
+
+        .docs-card {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            border: none;
+            border-radius: 0;
+            padding: 22px 4px 0;
+            background: transparent;
+        }
+        @media (min-width: 768px) {
+            .docs-card {
+                padding: 28px 4px 0;
+            }
+        }
+
+        .docs-card::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        .docs-card {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .docs-head,
+        .docs-card {
+            transition: opacity 0.28s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .docs-shell.is-switching .docs-head,
+        .docs-shell.is-switching .docs-card {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        .docs-card pre {
+            overflow: auto;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        body.dark-mode .docs-card pre {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .docs-card code {
+            font-family: inherit;
+            font-size: 0.92em;
+        }
+
+        .docs-card p,
+        .docs-card li {
+            line-height: 1.8;
+            color: var(--text-main);
+            word-break: break-word;
+        }
+
+        .docs-card h1,
+        .docs-card h2,
+        .docs-card h3 {
+            font-weight: 400;
+            line-height: 1.35;
+            margin: 0 0 12px;
+        }
+
+        .docs-card h1 { font-size: 30px; }
+        .docs-card h2 { font-size: 22px; margin-top: 24px; }
+        .docs-card h3 { font-size: 18px; margin-top: 18px; }
+
+        .docs-card p,
+        .docs-card ul,
+        .docs-card ol,
+        .docs-card pre,
+        .docs-card blockquote {
+            margin: 0 0 14px;
+        }
+
+        .docs-card ul,
+        .docs-card ol {
+            padding-left: 22px;
+        }
+
+        .docs-card blockquote {
+            padding: 10px 14px;
+            border-left: 3px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .docs-card a {
+            color: inherit;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 3px;
+        }
+
+        .docs-empty {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* --- 页脚 --- */
+        footer { padding: 14px 20px 16px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 12px; color: var(--text-secondary); letter-spacing: 0.5px; flex-shrink: 0; }
+        @media (min-width: 768px) { footer { padding: 20px; } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo" id="logo-btn">氢图床 <span id="home-tagline">Himg beta</span></div>
+        <div class="header-actions">
+            <button class="icon-btn" id="theme-toggle"><svg id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
+            <button class="icon-btn" id="menu-toggle"><svg id="menu-icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+            <div class="dropdown-menu" id="dropdown-menu">
+                <a href="javascript:void(0);" id="menu-login-btn">登录</a>
+                <a href="javascript:void(0);" id="menu-api-btn">API</a>
+                <a href="javascript:void(0);" id="menu-about-btn">关于</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="notice-container hidden" id="notice-bar">
+        <div class="notice-pill">
+            <div class="notice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>
+            <div class="notice-content" id="notice-content"></div>
+            <button class="notice-close" onclick="closeNotice()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+    </div>
+
+    <div class="views-wrapper">
+        <section class="view-section" id="view-upload">
+            <div class="upload-panel" id="upload-panel">
+                <div class="upload-area" id="upload-zone">
+                    <input id="file-input" type="file" accept="image/*" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <p>点击、拖拽或粘贴上传</p>
+                    <div class="upload-tip" id="upload-tip"></div>
+                    <div class="upload-progress" id="upload-progress">
+                        <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                    </div>
+                </div>
+                <div class="upload-result result-hidden" id="upload-result">
+                    <button class="result-copy" id="copy-url-btn" type="button">
+                        <span class="result-label">链接</span>
+                        <span class="result-value" id="upload-link"></span>
+                    </button>
+                    <button class="result-copy" id="copy-markdown-btn" type="button">
+                        <span class="result-label">Markdown</span>
+                        <span class="result-value" id="upload-markdown"></span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="view-section hidden" id="view-login">
+            <div class="login-card">
+                <div class="login-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="M9 12l2 2 4-4"></path>
+                    </svg>
+                </div>
+                <div class="login-input-box">
+                    <input type="password" id="admin-pass" placeholder="请输入管理员密码" autocomplete="current-password">
+                    <button class="login-submit-btn" id="do-login-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="view-section hidden" id="view-docs">
+            <div class="docs-shell">
+                <div class="docs-head">
+                </div>
+                <div class="docs-card" id="docs-content">
+                    <div class="docs-empty">加载中...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>Copyright © 2026 - All right reserved by xiimin</footer>
+
+    <script>
+        // 公告左滑关闭
+        function closeNotice() {
+            const bar = document.getElementById('notice-bar');
+            if (!bar) return;
+            bar.classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const THEME_STORAGE_KEY = 'himg-theme';
+            const noticeContent = document.getElementById('notice-content');
+            const noticeBar = document.getElementById('notice-bar');
+            const uploadPanel = document.getElementById('upload-panel');
+            const uploadZone = document.getElementById('upload-zone');
+            const fileInput = document.getElementById('file-input');
+            const uploadTip = document.getElementById('upload-tip');
+            const uploadProgress = document.getElementById('upload-progress');
+            const uploadProgressBar = document.getElementById('upload-progress-bar');
+            const uploadResult = document.getElementById('upload-result');
+            const uploadLink = document.getElementById('upload-link');
+            const uploadMarkdown = document.getElementById('upload-markdown');
+            const copyURLBtn = document.getElementById('copy-url-btn');
+            const copyMarkdownBtn = document.getElementById('copy-markdown-btn');
+            
+            // 视图元素
+            const viewUpload = document.getElementById('view-upload');
+            const viewLogin = document.getElementById('view-login');
+            const viewDocs = document.getElementById('view-docs');
+            const logoBtn = document.getElementById('logo-btn');
+            const homeTagline = document.getElementById('home-tagline');
+            const menuLoginBtn = document.getElementById('menu-login-btn');
+            const menuAPIBtn = document.getElementById('menu-api-btn');
+            const menuAboutBtn = document.getElementById('menu-about-btn');
+            const docsContent = document.getElementById('docs-content');
+            const docsShell = document.querySelector('.docs-shell');
+
+            let latestURL = '';
+            let latestMarkdown = '';
+            let isUploading = false;
+            let isAuthenticated = false;
+            let uploadPolicyCache = null;
+            let persistentNoticeText = '';
+            let transientNoticeTimer = null;
+            const docsCache = {};
+            let activeView = 'upload';
+            let activeDocKind = '';
+
+            function showNoticeMessage(text, autoHideMs) {
+                const message = (text || '').trim();
+                if (!message) return;
+
+                if (transientNoticeTimer) {
+                    clearTimeout(transientNoticeTimer);
+                    transientNoticeTimer = null;
+                }
+
+                noticeContent.textContent = message;
+                noticeBar.classList.remove('hidden');
+
+                if (autoHideMs && autoHideMs > 0) {
+                    transientNoticeTimer = setTimeout(() => {
+                        noticeBar.classList.add('hidden');
+                        transientNoticeTimer = null;
+                    }, autoHideMs);
+                }
+            }
+
+            // 视图切换逻辑
+            function showView(target) {
+                if (!target || target === activeView) return;
+
+                const views = {
+                    upload: viewUpload,
+                    login: viewLogin,
+                    docs: viewDocs
+                };
+
+                const currentView = views[activeView];
+                const nextView = views[target];
+                if (!nextView) return;
+
+                if (currentView) {
+                    currentView.classList.add('hidden');
+                }
+
+                requestAnimationFrame(() => {
+                    nextView.classList.remove('hidden');
+                    activeView = target;
+                });
+            }
+
+            menuLoginBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (isAuthenticated) {
+                    window.location.href = '/admin';
+                    return;
+                }
+                showView('login');
+            });
+
+            logoBtn.addEventListener('click', () => {
+                showView('upload');
+            });
+
+            function escapeHTML(text) {
+                return String(text || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function renderInlineMarkdown(text) {
+                return escapeHTML(text)
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            }
+
+            function renderMarkdown(markdown) {
+                const source = String(markdown || '').replace(/\r\n/g, '\n');
+                const lines = source.split('\n');
+                const html = [];
+                let inCodeBlock = false;
+                let codeLines = [];
+                let listType = '';
+
+                function closeList() {
+                    if (!listType) return;
+                    html.push(listType === 'ol' ? '</ol>' : '</ul>');
+                    listType = '';
+                }
+
+                function closeCodeBlock() {
+                    if (!inCodeBlock) return;
+                    html.push(`<pre><code>${escapeHTML(codeLines.join('\n'))}</code></pre>`);
+                    inCodeBlock = false;
+                    codeLines = [];
+                }
+
+                lines.forEach((rawLine) => {
+                    const line = rawLine || '';
+                    const trimmed = line.trim();
+
+                    if (trimmed.startsWith('```')) {
+                        closeList();
+                        if (inCodeBlock) {
+                            closeCodeBlock();
+                        } else {
+                            inCodeBlock = true;
+                        }
+                        return;
+                    }
+
+                    if (inCodeBlock) {
+                        codeLines.push(line);
+                        return;
+                    }
+
+                    if (!trimmed) {
+                        closeList();
+                        return;
+                    }
+
+                    if (/^#{1,3}\s+/.test(trimmed)) {
+                        closeList();
+                        const level = trimmed.match(/^#+/)[0].length;
+                        const content = trimmed.replace(/^#{1,3}\s+/, '');
+                        html.push(`<h${level}>${renderInlineMarkdown(content)}</h${level}>`);
+                        return;
+                    }
+
+                    if (/^>\s?/.test(trimmed)) {
+                        closeList();
+                        html.push(`<blockquote>${renderInlineMarkdown(trimmed.replace(/^>\s?/, ''))}</blockquote>`);
+                        return;
+                    }
+
+                    if (/^\d+\.\s+/.test(trimmed)) {
+                        if (listType !== 'ol') {
+                            closeList();
+                            listType = 'ol';
+                            html.push('<ol>');
+                        }
+                        html.push(`<li>${renderInlineMarkdown(trimmed.replace(/^\d+\.\s+/, ''))}</li>`);
+                        return;
+                    }
+
+                    if (/^[-*]\s+/.test(trimmed)) {
+                        if (listType !== 'ul') {
+                            closeList();
+                            listType = 'ul';
+                            html.push('<ul>');
+                        }
+                        html.push(`<li>${renderInlineMarkdown(trimmed.replace(/^[-*]\s+/, ''))}</li>`);
+                        return;
+                    }
+
+                    closeList();
+                    html.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+                });
+
+                closeList();
+                closeCodeBlock();
+
+                return html.join('') || '<div class="docs-empty">文档暂无内容。</div>';
+            }
+
+            async function openDocPage(kind, fileName, title) {
+                const isDocsView = activeView === 'docs';
+                const isSwitchingDocs = isDocsView && activeDocKind && activeDocKind !== kind;
+
+                if (isSwitchingDocs && docsShell) {
+                    docsShell.classList.add('is-switching');
+                    await new Promise((resolve) => setTimeout(resolve, 220));
+                }
+
+                docsContent.innerHTML = '<div class="docs-empty">加载中...</div>';
+                showView('docs');
+
+                if (!docsCache[kind]) {
+                    const response = await fetch(`/theme/${fileName}`, { cache: 'no-store' });
+                    if (!response.ok) {
+                        throw new Error('文档加载失败');
+                    }
+                    docsCache[kind] = await response.text();
+                }
+
+                docsContent.innerHTML = renderMarkdown(docsCache[kind]);
+                activeDocKind = kind;
+
+                if (docsShell) {
+                    requestAnimationFrame(() => {
+                        docsShell.classList.remove('is-switching');
+                    });
+                }
+            }
+
+            async function handleOpenDoc(kind, fileName, title) {
+                try {
+                    await openDocPage(kind, fileName, title);
+                } catch (error) {
+                    docsContent.innerHTML = `<div class="docs-empty">${escapeHTML(error.message || '文档加载失败')}</div>`;
+                    activeDocKind = kind;
+                    showView('docs');
+                    if (docsShell) {
+                        requestAnimationFrame(() => {
+                            docsShell.classList.remove('is-switching');
+                        });
+                    }
+                }
+            }
+
+            menuAPIBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await handleOpenDoc('api', 'api.md', 'API 文档');
+            });
+
+            menuAboutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await handleOpenDoc('about', 'about.md', '关于 Himg');
+            });
+
+            async function loadNotice() {
+                try {
+                    const response = await fetch('/api/notice');
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || '读取公告失败');
+                    }
+                    const text = (data.content || '').trim();
+                    const enabled = !!data.enabled;
+                    persistentNoticeText = enabled && text ? text : '';
+                    if (!enabled || !text) {
+                        noticeBar.classList.add('hidden');
+                        return;
+                    }
+                    requestAnimationFrame(() => {
+                        showNoticeMessage(text);
+                    });
+                } catch (_) {
+                    persistentNoticeText = '';
+                    noticeBar.classList.add('hidden');
+                }
+            }
+
+            async function loadSession() {
+                try {
+                    const response = await fetch('/api/session', { cache: 'no-store' });
+                    const data = await response.json();
+                    if (!response.ok) return;
+                    isAuthenticated = !!data.authenticated;
+                    menuLoginBtn.textContent = isAuthenticated ? '管理' : '登录';
+                    menuLoginBtn.setAttribute('aria-label', isAuthenticated ? '进入管理后台' : '登录管理后台');
+                } catch (_) {
+                    isAuthenticated = false;
+                    menuLoginBtn.textContent = '登录';
+                    menuLoginBtn.setAttribute('aria-label', '登录管理后台');
+                }
+            }
+
+            async function loadSiteConfig() {
+                try {
+                    const response = await fetch('/api/site-config', { cache: 'no-store' });
+                    const data = await response.json();
+                    if (!response.ok) return;
+                    const tagline = String(data.home_tagline || '').trim();
+                    const browserTitle = String(data.browser_title || '').trim();
+                    if (tagline) homeTagline.textContent = tagline;
+                    if (browserTitle) document.title = browserTitle;
+                } catch (_) {}
+            }
+
+            function setUploadTip(text) {
+                uploadTip.textContent = text || '';
+            }
+
+            function setUploadBusyState(busy) {
+                const isBusy = !!busy;
+                uploadZone.classList.toggle('is-uploading', isBusy);
+                fileInput.disabled = isBusy;
+            }
+
+            function showUploadBusyTip() {
+                setUploadTip('正在上传/处理中，请等待成功后再操作');
+            }
+
+            function setUploadProgress(percent) {
+                const value = Math.max(0, Math.min(100, Math.round(percent || 0)));
+                uploadProgressBar.style.width = `${value}%`;
+                uploadProgress.classList.add('visible');
+            }
+
+            function resetUploadProgress() {
+                uploadProgress.classList.remove('visible');
+                uploadProgressBar.style.width = '0%';
+            }
+
+            async function loadUploadPolicy() {
+                if (uploadPolicyCache) return uploadPolicyCache;
+                try {
+                    const response = await fetch('/api/upload-policy', {
+                        method: 'GET',
+                        cache: 'no-store',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (!response.ok) throw new Error('policy unavailable');
+                    const data = await response.json();
+                    uploadPolicyCache = {
+                        upload_speed_kb_per_second: Math.max(0, Number(data.upload_speed_kb_per_second || 0))
+                    };
+                } catch (_) {
+                    uploadPolicyCache = { upload_speed_kb_per_second: 0 };
+                }
+                return uploadPolicyCache;
+            }
+
+            function createUploadProgressController(file, speedKBPerSecond) {
+                const speedBytesPerSecond = Math.max(0, Number(speedKBPerSecond || 0)) * 1024;
+                let actualPercent = 0;
+                let displayedPercent = 0;
+                const startedAt = Date.now();
+                let timer = null;
+
+                const render = () => {
+                    let targetPercent = actualPercent;
+                    if (speedBytesPerSecond > 0 && file && file.size > 0) {
+                        const elapsedSeconds = Math.max(0, (Date.now() - startedAt) / 1000);
+                        const allowedBytes = elapsedSeconds * speedBytesPerSecond;
+                        const limitedPercent = Math.min(100, (allowedBytes / file.size) * 100);
+                        targetPercent = Math.min(actualPercent, limitedPercent);
+                    }
+                    displayedPercent = Math.max(displayedPercent, Math.min(100, targetPercent));
+                    setUploadProgress(displayedPercent);
+                    if (displayedPercent >= 100) {
+                        setUploadTip('处理中...');
+                    } else {
+                        setUploadTip(`上传中 ${Math.floor(displayedPercent)}%`);
+                    }
+                };
+
+                return {
+                    start() {
+                        render();
+                        if (speedBytesPerSecond > 0) {
+                            timer = setInterval(render, 250);
+                        }
+                    },
+                    update(percent) {
+                        actualPercent = Math.max(actualPercent, Math.max(0, Math.min(100, Number(percent || 0))));
+                        render();
+                    },
+                    async finishUploadDisplay() {
+                        actualPercent = 100;
+                        render();
+                        while (speedBytesPerSecond > 0 && displayedPercent < 100) {
+                            await new Promise((resolve) => setTimeout(resolve, 250));
+                            render();
+                        }
+                        setUploadProgress(100);
+                        setUploadTip('处理中...');
+                    },
+                    stop() {
+                        if (timer) {
+                            clearInterval(timer);
+                            timer = null;
+                        }
+                    }
+                };
+            }
+
+            function buildMarkdown(url) {
+                return `![](${url})`;
+            }
+
+            function showUploadResult(url, markdown) {
+                latestURL = url;
+                latestMarkdown = markdown || buildMarkdown(url);
+                uploadLink.textContent = url;
+                uploadMarkdown.textContent = latestMarkdown;
+                uploadResult.classList.remove('result-hidden');
+                requestAnimationFrame(() => {
+                    uploadPanel.classList.add('has-result');
+                });
+            }
+
+            function fallbackCopyText(text) {
+                const textarea = document.createElement('textarea');
+                const selection = window.getSelection();
+                const selectedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.top = '-9999px';
+                textarea.style.left = '-9999px';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+
+                let copied = false;
+                try {
+                    copied = document.execCommand('copy');
+                } catch (_) {
+                    copied = false;
+                }
+
+                document.body.removeChild(textarea);
+                if (selectedRange && selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(selectedRange);
+                }
+                return copied;
+            }
+
+            async function copyText(text, successMessage) {
+                if (!text) return;
+
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        setUploadTip(successMessage);
+                        return;
+                    } catch (_) {}
+                }
+
+                if (fallbackCopyText(text)) {
+                    setUploadTip(successMessage);
+                    return;
+                }
+
+                setUploadTip('复制失败，请手动复制');
+            }
+
+            async function copyLatestURL() {
+                await copyText(latestURL, '链接已复制');
+            }
+
+            async function copyLatestMarkdown() {
+                await copyText(latestMarkdown, 'Markdown 已复制');
+            }
+
+            async function uploadFile(file) {
+                if (!file) return;
+                if (isUploading) {
+                    showUploadBusyTip();
+                    return;
+                }
+                isUploading = true;
+                setUploadBusyState(true);
+                const formData = new FormData();
+                formData.append('image', file);
+                setUploadTip('上传中 0%');
+                setUploadProgress(0);
+                latestURL = '';
+                latestMarkdown = '';
+                uploadPanel.classList.remove('has-result');
+                uploadResult.classList.add('result-hidden');
+
+                try {
+                    const uploadPolicy = await loadUploadPolicy();
+                    const progressController = createUploadProgressController(file, uploadPolicy.upload_speed_kb_per_second);
+                    progressController.start();
+                    const data = await new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', '/api/upload', true);
+
+                        xhr.upload.addEventListener('progress', (event) => {
+                            if (!event.lengthComputable) return;
+                            const percent = Math.round((event.loaded / event.total) * 100);
+                            progressController.update(percent);
+                        });
+
+                        xhr.addEventListener('load', async () => {
+                            let result = {};
+                            try {
+                                result = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+                            } catch (_) {}
+
+                            if (xhr.status < 200 || xhr.status >= 300) {
+                                progressController.stop();
+                                reject(new Error(result.error || '上传失败'));
+                                return;
+                            }
+
+                            await progressController.finishUploadDisplay();
+                            progressController.stop();
+                            resolve(result);
+                        });
+
+                        xhr.addEventListener('error', () => {
+                            progressController.stop();
+                            reject(new Error('上传失败'));
+                        });
+
+                        xhr.addEventListener('abort', () => {
+                            progressController.stop();
+                            reject(new Error('上传已取消'));
+                        });
+
+                        xhr.send(formData);
+                    });
+
+                    if (!data.url) {
+                        throw new Error('上传成功但未返回链接');
+                    }
+                    showUploadResult(data.url, (data.markdown || '').trim());
+                    setUploadTip('上传成功，点击下方可复制');
+                } catch (error) {
+                    setUploadTip(error.message || '上传失败');
+                } finally {
+                    isUploading = false;
+                    setUploadBusyState(false);
+                    setTimeout(() => {
+                        if (!isUploading) {
+                            resetUploadProgress();
+                        }
+                    }, 250);
+                    fileInput.value = '';
+                }
+            }
+
+            function handleTooManyFiles() {
+                setUploadTip('每次只能上传一张图片');
+                fileInput.value = '';
+            }
+
+            uploadZone.addEventListener('click', (event) => {
+                if (isUploading) {
+                    showUploadBusyTip();
+                    return;
+                }
+                if (event.target && event.target.closest('.result-copy')) return;
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', () => {
+                const files = fileInput.files;
+                if (!files || files.length === 0) return;
+                if (files.length > 1) {
+                    handleTooManyFiles();
+                    return;
+                }
+                uploadFile(files[0]);
+            });
+
+            uploadZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                if (isUploading) {
+                    showUploadBusyTip();
+                    return;
+                }
+                uploadZone.style.transform = 'translateY(-2px)';
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.style.transform = '';
+            });
+
+            uploadZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                if (isUploading) {
+                    showUploadBusyTip();
+                    return;
+                }
+                uploadZone.style.transform = '';
+                const files = event.dataTransfer && event.dataTransfer.files;
+                if (!files || files.length === 0) return;
+                if (files.length > 1) {
+                    handleTooManyFiles();
+                    return;
+                }
+                uploadFile(files[0]);
+            });
+
+            document.addEventListener('paste', (event) => {
+                if (isUploading) {
+                    showUploadBusyTip();
+                    return;
+                }
+                const items = event.clipboardData && event.clipboardData.items;
+                if (!items) return;
+                let imageCount = 0;
+                let imageFile = null;
+                for (let i = 0; i < items.length; i += 1) {
+                    const item = items[i];
+                    if (item.type && item.type.startsWith('image/')) {
+                        imageCount += 1;
+                        if (!imageFile) {
+                            imageFile = item.getAsFile();
+                        }
+                    }
+                }
+                if (imageCount > 1) {
+                    handleTooManyFiles();
+                    return;
+                }
+                if (imageFile) {
+                    uploadFile(imageFile);
+                }
+            });
+
+            copyURLBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                copyLatestURL();
+            });
+
+            copyMarkdownBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                copyLatestMarkdown();
+            });
+
+            loadNotice();
+            loadSession();
+            loadSiteConfig();
+
+            // 主题切换动效
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const iconMoon = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+            const iconSun = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
+
+            function readStoredTheme() {
+                try {
+                    return localStorage.getItem(THEME_STORAGE_KEY) || '';
+                } catch (_) {
+                    return '';
+                }
+            }
+
+            function writeStoredTheme(theme) {
+                try {
+                    localStorage.setItem(THEME_STORAGE_KEY, theme);
+                } catch (_) {}
+            }
+
+            function applyTheme(isDark) {
+                document.body.classList.toggle('dark-mode', isDark);
+                themeIcon.innerHTML = isDark ? iconSun : iconMoon;
+            }
+
+            applyTheme(readStoredTheme() === 'dark');
+
+            themeToggleBtn.addEventListener('click', () => {
+                themeIcon.style.transform = 'scale(0) rotate(90deg)';
+                themeIcon.style.opacity = '0';
+                setTimeout(() => {
+                    const isDark = !document.body.classList.contains('dark-mode');
+                    applyTheme(isDark);
+                    writeStoredTheme(isDark ? 'dark' : 'light');
+                    themeIcon.style.transform = 'scale(1) rotate(0deg)';
+                    themeIcon.style.opacity = '1';
+                }, 200);
+            });
+
+            // 菜单交互
+            const menuToggleBtn = document.getElementById('menu-toggle');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const menuIcon = document.getElementById('menu-icon');
+            const iconHamburger = `<line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>`;
+            const iconClose = `<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>`;
+
+            menuToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = dropdownMenu.classList.toggle('show');
+                menuIcon.style.transform = 'rotate(90deg)';
+                menuIcon.style.opacity = '0';
+                setTimeout(() => {
+                    menuIcon.innerHTML = isOpen ? iconClose : iconHamburger;
+                    menuIcon.style.transform = 'rotate(0deg)';
+                    menuIcon.style.opacity = '1';
+                }, 100);
+            });
+
+            document.addEventListener('click', () => {
+                dropdownMenu.classList.remove('show');
+                menuIcon.innerHTML = iconHamburger;
+            });
+
+            async function submitLogin() {
+                const passwordInput = document.getElementById('admin-pass');
+                const password = passwordInput.value.trim();
+                if (!password) return;
+
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ password })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || '登录失败');
+                    }
+                    window.location.href = '/admin';
+                } catch (error) {
+                    showNoticeMessage(error.message || '登录失败', 3000);
+                }
+            }
+
+            document.getElementById('do-login-btn').addEventListener('click', () => {
+                submitLogin();
+            });
+
+            document.getElementById('admin-pass').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitLogin();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
