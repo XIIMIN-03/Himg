@@ -28,7 +28,7 @@ Himg 是一个基于 Go 的轻量级图片托管系统，除基础功能外支�
 ```
 
 ## 预览图
-![Uploading IMG_20260505_225832.jpg…]()
+![Alt text](https://himg.xiimin.com/uploads/1777995781149292975.webp)
 
 
 ## 快速开始
